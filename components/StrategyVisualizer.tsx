@@ -2,7 +2,7 @@ import React from 'react';
 import { Badge } from './ui/badge';
 import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 
-interface StrategyLeg {
+export interface StrategyLeg {
   action: 'Buy' | 'Sell';
   type: 'Call' | 'Put' | 'Stock';
   strike?: number;
