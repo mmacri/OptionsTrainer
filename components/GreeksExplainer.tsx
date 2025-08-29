@@ -24,48 +24,26 @@ const greeksData = [
     name: 'Delta',
     symbol: 'Δ',
     icon: TrendingUp,
-    calculation: (data: OptionsData, type: 'Call' | 'Put') => {
-      const moneyness = data.currentPrice / data.strikePrice;
-      if (type === 'Call') {
-        return moneyness > 1 ? 0.7 : moneyness > 0.95 ? 0.5 : 0.3;
-      } else {
-        return moneyness < 1 ? -0.7 : moneyness < 1.05 ? -0.5 : -0.3;
-      }
-    },
   },
   {
     name: 'Gamma',
     symbol: 'Γ',
     icon: Zap,
-    calculation: (data: OptionsData) => {
-      const moneyness = data.currentPrice / data.strikePrice;
-      return Math.max(0.1, 0.3 * Math.exp(-Math.abs(moneyness - 1) * 5));
-    },
   },
   {
     name: 'Theta',
     symbol: 'Θ',
     icon: Clock,
-    calculation: (data: OptionsData) => {
-      return -data.premium * 0.03 * (30 / data.daysToExpiry);
-    },
   },
   {
     name: 'Vega',
     symbol: 'ν',
     icon: AlertTriangle,
-    calculation: (data: OptionsData) => {
-      const timeToExpiry = data.daysToExpiry / 365;
-      return data.premium * 0.2 * Math.sqrt(timeToExpiry);
-    },
   },
   {
     name: 'Rho',
     symbol: 'ρ',
     icon: TrendingDown,
-    calculation: (data: OptionsData, type: 'Call' | 'Put') => {
-      return type === 'Call' ? data.premium * 0.01 : -data.premium * 0.01;
-    },
   },
 ];
 
@@ -130,6 +108,17 @@ const calculateGreeks = (data: OptionsData) => {
 export const GreeksExplainer = ({ optionsData }: { optionsData: OptionsData }) => {
   const greeks = useMemo(() => calculateGreeks(optionsData), [optionsData]);
 
+  const formatGreekValue = (name: string) => {
+    switch (name) {
+      case 'Delta':
+        return `Call: ${greeks.callDelta.toFixed(2)} | Put: ${greeks.putDelta.toFixed(2)}`;
+      case 'Rho':
+        return `Call: ${greeks.rhoCall.toFixed(2)} | Put: ${greeks.rhoPut.toFixed(2)}`;
+      default:
+        return greeks[name.toLowerCase() as keyof typeof greeks].toFixed(2);
+    }
+  };
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {greeksData.map((g) => (
@@ -140,17 +129,7 @@ export const GreeksExplainer = ({ optionsData }: { optionsData: OptionsData }) =
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-2 text-sm">
-              {g.name === 'Delta'
-                ? `Call: ${greeks.callDelta.toFixed(2)} | Put: ${greeks.putDelta.toFixed(2)}`
-                : g.name === 'Gamma'
-                ? greeks.gamma.toFixed(2)
-                : g.name === 'Theta'
-                ? greeks.theta.toFixed(2)
-                : g.name === 'Vega'
-                ? greeks.vega.toFixed(2)
-                : `Call: ${greeks.rhoCall.toFixed(2)} | Put: ${greeks.rhoPut.toFixed(2)}`}
-            </p>
+            <p className="mb-2 text-sm">{formatGreekValue(g.name)}</p>
             <Tabs defaultValue="examples">
               <TabsList>
                 <TabsTrigger value="examples">Examples</TabsTrigger>
