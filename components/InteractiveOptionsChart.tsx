@@ -1,94 +1,384 @@
-import React,{useMemo,useState}from'react';
-import{Card,CardContent,CardDescription,CardHeader,CardTitle}from'./ui/card';
-import{Button}from'./ui/button';
-import{Badge}from'./ui/badge';
-import{Slider}from'./ui/slider';
-import{Tooltip,TooltipContent,TooltipProvider,TooltipTrigger}from'./ui/tooltip';
-import{Tabs,TabsContent,TabsList,TabsTrigger}from'./ui/tabs';
-import{ChevronRight,Activity,Zap}from'lucide-react';
-import{motion,AnimatePresence}from'motion/react';
-import{ResponsiveContainer,LineChart,Line,CartesianGrid,XAxis,YAxis,Tooltip as RechartsTooltip,ReferenceLine,ReferenceArea}from'recharts';
-import{GreeksExplainer,OptionsData}from'./GreeksExplainer';
-import{StrategyVisualizer,StrategyLeg}from'./StrategyVisualizer';
+import React, { Suspense, useMemo, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { TooltipProvider } from "./ui/tooltip";
+import ParameterSlider from "./ParameterSlider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { ChevronRight, Activity, Zap } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  ReferenceLine,
+  ReferenceArea,
+} from "recharts";
+import { StrategyVisualizer, StrategyLeg } from "./StrategyVisualizer";
+import type { OptionsData } from "./GreeksExplainer";
+import { optionsStrategies, OptionsStrategy } from "./strategies";
+import {
+  quickPresets,
+  getCategoryColor,
+  getComplexityColor,
+  getRiskColor,
+  walkthroughSteps,
+} from "./config";
+const GreeksExplainer = React.lazy(() =>
+  import("./GreeksExplainer").then((m) => ({ default: m.GreeksExplainer })),
+);
 
-interface PayoffPoint{stockPrice:number;profitLoss:number;}
-interface OptionsStrategy{ id:string;title:string;description:string;category:string;complexity:string;riskLevel:string;maxProfit:string;maxLoss:string;breakeven:string;whenToUse:string[];calculatePayoff:(stockPrice:number,options:OptionsData)=>number;legs:StrategyLeg[];}
+interface PayoffPoint {
+  stockPrice: number;
+  profitLoss: number;
+}
+// OptionsStrategy data lives in ./strategies
 
-const optionsStrategies:OptionsStrategy[]=[{id:'long-call',title:'Long Call',description:'Buy a call option expecting the stock price to rise significantly above the strike price.',category:'Bullish',complexity:'Basic',riskLevel:'Low',maxProfit:'Unlimited',maxLoss:'Premium Paid',breakeven:'Strike Price + Premium',whenToUse:['You expect the stock to rise significantly','Earnings announcement approaching with positive expectations','Technical breakout patterns suggesting upward momentum','Low cost way to participate in upside potential'],calculatePayoff:(s,o)=>Math.max(s-o.strikePrice,0)-o.premium,legs:[{action:'Buy',type:'Call'}]},{id:'long-put',title:'Long Put',description:'Buy a put option expecting the stock price to fall significantly below the strike price.',category:'Bearish',complexity:'Basic',riskLevel:'Low',maxProfit:'Strike Price - Premium',maxLoss:'Premium Paid',breakeven:'Strike Price - Premium',whenToUse:['You expect the stock to decline significantly','Negative news or poor earnings outlook for the company','Hedging against a long position in the underlying stock','Low cost way to speculate on downside movement'],calculatePayoff:(s,o)=>Math.max(o.strikePrice-s,0)-o.premium,legs:[{action:'Buy',type:'Put'}]},{id:'covered-call',title:'Covered Call',description:'Sell a call option while holding the underlying stock to generate income and cap potential upside.',category:'Neutral',complexity:'Basic',riskLevel:'Medium',maxProfit:'Strike Price - Stock Cost + Premium',maxLoss:'Stock Cost - Premium',breakeven:'Stock Cost - Premium',whenToUse:['You believe the stock will trade sideways','You want to generate income from a long stock position','You are willing to sell your shares at the strike price','You expect moderate price appreciation but want some downside protection'],calculatePayoff:(s,o)=>{const stockPayoff=s-o.currentPrice;const shortCall=-Math.max(s-o.strikePrice,0)+o.premium;return stockPayoff+shortCall;},legs:[{action:'Sell',type:'Call'},{action:'Buy',type:'Stock'}]},{id:'protective-put',title:'Protective Put',description:'Buy a put option to protect a long stock position from downside risk while maintaining upside potential.',category:'Neutral',complexity:'Basic',riskLevel:'Low',maxProfit:'Unlimited',maxLoss:'Stock Cost + Premium - Strike Price',breakeven:'Stock Cost + Premium',whenToUse:['You own the stock and want downside protection','Volatile market conditions with uncertain outlook','Earnings announcements or macro events could cause large drops','Insurance against a decline while retaining upside exposure'],calculatePayoff:(s,o)=>{const stockPayoff=s-o.currentPrice;const longPut=Math.max(o.strikePrice-s,0)-o.premium;return stockPayoff+longPut;},legs:[{action:'Buy',type:'Stock'},{action:'Buy',type:'Put'}]}];
-
-const quickPresets={ATMOption:{strikePrice:100,currentPrice:100,premium:3,daysToExpiry:30,impliedVolatility:20,interestRate:5,dividendYield:2},OTMCall:{strikePrice:105,currentPrice:100,premium:2,daysToExpiry:30,impliedVolatility:25,interestRate:5,dividendYield:2},OTMPut:{strikePrice:95,currentPrice:100,premium:2,daysToExpiry:30,impliedVolatility:25,interestRate:5,dividendYield:2},HighVol:{strikePrice:100,currentPrice:100,premium:8,daysToExpiry:7,impliedVolatility:50,interestRate:5,dividendYield:1}};
-
-// Tooltip content for each market parameter slider.
-const parameterTooltips: Record<keyof OptionsData, { title: string; content: string }> = {
-  currentPrice: {
-    title: 'Current Stock Price (S)',
-    content: 'The current market price of the underlying stock. This determines option moneyness.',
-  },
-  strikePrice: {
-    title: 'Strike Price (K)',
-    content: 'The exercise price of the option contract.',
-  },
-  premium: {
-    title: 'Option Premium',
-    content: 'The price paid for the option contract. For short strategies this is the credit received.',
-  },
-  daysToExpiry: {
-    title: 'Days to Expiry (T)',
-    content: 'Number of days until the option expires. Shorter durations increase time decay (Theta).',
-  },
-  impliedVolatility: {
-    title: 'Implied Volatility (IV)',
-    content: 'Expected volatility of the underlying over the life of the option. Higher IV increases option premiums.',
-  },
-  interestRate: {
-    title: 'Risk-free Interest Rate (r)',
-    content: 'Annualized interest rate used in option pricing models. Higher rates generally raise call values and lower put values.',
-  },
-  dividendYield: {
-    title: 'Dividend Yield (q)',
-    content: 'Expected annual dividend yield of the underlying stock. Dividends decrease call values and increase put values.',
-  },
+const safePayoffCalculation = (
+  s: number,
+  strategy: OptionsStrategy,
+  o: OptionsData,
+) => {
+  try {
+    return strategy.calculatePayoff(s, o);
+  } catch (e) {
+    console.warn("Payoff calculation error:", e);
+    return 0;
+  }
 };
 
-const getCategoryColor=(c:string)=>c==='Bullish'?'bg-green-50 text-green-700 border-green-200':c==='Bearish'?'bg-red-50 text-red-700 border-red-200':c==='Neutral'?'bg-blue-50 text-blue-700 border-blue-200':'bg-purple-50 text-purple-700 border-purple-200';
-const getComplexityColor=(c:string)=>c==='Basic'?'bg-green-50 text-green-700 border-green-200':c==='Intermediate'?'bg-yellow-50 text-yellow-700 border-yellow-200':c==='Advanced'?'bg-red-50 text-red-700 border-red-200':'bg-gray-50 text-gray-700 border-gray-200';
-const getRiskColor=(r:string)=>r==='Low'?'bg-green-50 text-green-700 border-green-200':r==='Medium'?'bg-yellow-50 text-yellow-700 border-yellow-200':r==='High'?'bg-orange-50 text-orange-700 border-orange-200':r==='Unlimited'?'bg-red-50 text-red-700 border-red-200':'bg-gray-50 text-gray-700 border-gray-200';
+export const InteractiveOptionsChart = () => {
+  const [expandedStrategy, setExpandedStrategy] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState<"chart" | "education">(
+    "chart",
+  );
+  const [optionsData, setOptionsData] = useState<OptionsData>({
+    strikePrice: 100,
+    currentPrice: 100,
+    premium: 5,
+    daysToExpiry: 30,
+    impliedVolatility: 25,
+    interestRate: 5,
+    dividendYield: 2,
+  });
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [walkthroughStep, setWalkthroughStep] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const handlePreset = (p: OptionsData) => setOptionsData(p);
+  const generatePayoffData = useMemo(() => {
+    return (strategy: OptionsStrategy): PayoffPoint[] => {
+      const data: PayoffPoint[] = [];
+      const minPrice = Math.max(0, optionsData.strikePrice - 30);
+      const maxPrice = optionsData.strikePrice + 30;
+      for (let price = minPrice; price <= maxPrice; price += 2) {
+        data.push({
+          stockPrice: price,
+          profitLoss: safePayoffCalculation(price, strategy, optionsData),
+        });
+      }
+      return data;
+    };
+  }, [optionsData]);
 
-const safePayoffCalculation=(s:number,strategy:OptionsStrategy,o:OptionsData)=>{try{return strategy.calculatePayoff(s,o);}catch(e){console.warn('Payoff calculation error:',e);return 0;}};
+  const sliders = [
+    { label: "currentPrice", min: 50, max: 200, step: 1 },
+    { label: "strikePrice", min: 50, max: 200, step: 5 },
+    { label: "premium", min: 0.5, max: 30, step: 0.25 },
+    { label: "daysToExpiry", min: 1, max: 365, step: 1 },
+    { label: "impliedVolatility", min: 5, max: 100, step: 1 },
+    { label: "interestRate", min: 0, max: 10, step: 0.1 },
+    { label: "dividendYield", min: 0, max: 5, step: 0.1 },
+  ] as const;
 
-export const InteractiveOptionsChart=()=>{const[expandedStrategy,setExpandedStrategy]=useState<string|null>(null);const[selectedTab,setSelectedTab]=useState<'chart'|'education'>('chart');const[optionsData,setOptionsData]=useState<OptionsData>({strikePrice:100,currentPrice:100,premium:5,daysToExpiry:30,impliedVolatility:25,interestRate:5,dividendYield:2});const[showWalkthrough,setShowWalkthrough]=useState(false);const[walkthroughStep,setWalkthroughStep]=useState(0);const[showCelebration,setShowCelebration]=useState(false);const steps=[{title:'Welcome',content:'This tour will guide you through the dashboard.'},{title:'Parameters',content:'Use these sliders to set market conditions and option inputs.'},{title:'Strategies',content:'Expand a strategy card to view its payoff chart or educational tips.'},{title:'Greeks',content:'Learn how the Greeks measure option sensitivity.'}];const handlePreset=(p:OptionsData)=>setOptionsData(p);const generatePayoffData=useMemo(()=>{return(strategy:OptionsStrategy):PayoffPoint[]=>{const data:PayoffPoint[]=[];const minPrice=Math.max(0,optionsData.strikePrice-30);const maxPrice=optionsData.strikePrice+30;for(let price=minPrice;price<=maxPrice;price+=2){data.push({stockPrice:price,profitLoss:safePayoffCalculation(price,strategy,optionsData)});}return data;};},[optionsData]);
+  const StrategyCard = ({ strategy }: { strategy: OptionsStrategy }) => {
+    const isExpanded = expandedStrategy === strategy.id;
+    const payoffData = generatePayoffData(strategy);
+    const maxPayoff = Math.max(...payoffData.map((p) => p.profitLoss));
+    const minPayoff = Math.min(...payoffData.map((p) => p.profitLoss));
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <Card>
+          <CardHeader
+            onClick={() => setExpandedStrategy(isExpanded ? null : strategy.id)}
+            className="cursor-pointer"
+          >
+            <CardTitle className="flex items-center gap-2">
+              {strategy.title}
+              <ChevronRight
+                className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                aria-hidden="true"
+              />
+            </CardTitle>
+            <CardDescription>{strategy.description}</CardDescription>
+            <div className="flex gap-1 mt-2">
+              <Badge className={getCategoryColor(strategy.category)}>
+                {strategy.category}
+              </Badge>
+              <Badge className={getComplexityColor(strategy.complexity)}>
+                {strategy.complexity}
+              </Badge>
+              <Badge className={getRiskColor(strategy.riskLevel)}>
+                {strategy.riskLevel}
+              </Badge>
+            </div>
+          </CardHeader>
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+              >
+                <CardContent>
+                  <Tabs defaultValue={selectedTab}>
+                    <TabsList>
+                      <div
+                        onClick={() => setSelectedTab("chart")}
+                        className="contents"
+                      >
+                        <TabsTrigger value="chart">Chart</TabsTrigger>
+                      </div>
+                      <div
+                        onClick={() => setSelectedTab("education")}
+                        className="contents"
+                      >
+                        <TabsTrigger value="education">Education</TabsTrigger>
+                      </div>
+                    </TabsList>
+                    <TabsContent value="chart">
+                      <div className="w-full h-96">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={payoffData}>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              className="opacity-30"
+                            />
+                            <XAxis
+                              dataKey="stockPrice"
+                              label={{
+                                value: "Stock Price ($)",
+                                position: "insideBottom",
+                                offset: -5,
+                              }}
+                            />
+                            <YAxis
+                              label={{
+                                value: "Profit/Loss ($)",
+                                angle: -90,
+                                position: "insideLeft",
+                              }}
+                            />
+                            <ReferenceArea
+                              y1={0}
+                              y2={maxPayoff}
+                              fill="rgba(34,197,94,0.1)"
+                            />
+                            <ReferenceArea
+                              y1={minPayoff}
+                              y2={0}
+                              fill="rgba(239,68,68,0.1)"
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="profitLoss"
+                              stroke="#2563eb"
+                              strokeWidth={3}
+                              dot={false}
+                            />
+                            <ReferenceLine
+                              y={0}
+                              stroke="#374151"
+                              strokeDasharray="2 2"
+                              strokeWidth={2}
+                            />
+                            <ReferenceLine
+                              x={optionsData.currentPrice}
+                              stroke="#2563eb"
+                              strokeDasharray="4 4"
+                              strokeWidth={2}
+                            />
+                            <RechartsTooltip
+                              content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                  const val = payload[0].value as number;
+                                  return (
+                                    <div className="p-2 bg-white border rounded text-sm">
+                                      <p>Stock: {label}</p>
+                                      <p>P/L: {val}</p>
+                                      <p>
+                                        {val > 0
+                                          ? "Above the breakeven price the strategy yields a profit"
+                                          : "Below the breakeven price the strategy loses"}
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="education">
+                      <StrategyVisualizer legs={strategy.legs} />
+                      <ul className="list-disc pl-5 mt-2 text-sm">
+                        {strategy.whenToUse.map((w) => (
+                          <li key={w}>{w}</li>
+                        ))}
+                      </ul>
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
+      </motion.div>
+    );
+  };
 
- // Renders a labeled slider with a tooltip describing the parameter.
- const ParameterSlider = (label: keyof OptionsData, min: number, max: number, step: number) => {
-   const val = (optionsData as any)[label] as number;
-   return (
-     <div className="mb-4" key={label}>
-       <div className="flex justify-between mb-1">
-         <span className="text-sm capitalize">{label}</span>
-         <span className="text-sm">{val.toFixed(step < 1 ? 2 : 0)}</span>
-       </div>
-       <Tooltip>
-         <TooltipTrigger>
-           <Slider
-             aria-label={label}
-             aria-valuetext={`${val}`}
-             min={min}
-             max={max}
-             step={step}
-             value={val}
-             onValueChange={(v) => setOptionsData((prev) => ({ ...prev, [label]: Number(v) }))}
-           />
-         </TooltipTrigger>
-         <TooltipContent>
-           <strong>{parameterTooltips[label].title}</strong>
-           <p>{parameterTooltips[label].content}</p>
-         </TooltipContent>
-       </Tooltip>
-     </div>
-   );
- };
-
- const StrategyCard=({strategy}:{strategy:OptionsStrategy})=>{const isExpanded=expandedStrategy===strategy.id;const payoffData=generatePayoffData(strategy);const maxPayoff=Math.max(...payoffData.map(p=>p.profitLoss));const minPayoff=Math.min(...payoffData.map(p=>p.profitLoss));return(<motion.div layout initial={{opacity:0,y:20}} animate={{opacity:1,y:0}}><Card><CardHeader onClick={()=>setExpandedStrategy(isExpanded?null:strategy.id)} className="cursor-pointer"><CardTitle className="flex items-center gap-2">{strategy.title}<ChevronRight className={`w-4 h-4 transition-transform ${isExpanded?'rotate-90':''}`}/></CardTitle><CardDescription>{strategy.description}</CardDescription><div className="flex gap-1 mt-2"><Badge className={getCategoryColor(strategy.category)}>{strategy.category}</Badge><Badge className={getComplexityColor(strategy.complexity)}>{strategy.complexity}</Badge><Badge className={getRiskColor(strategy.riskLevel)}>{strategy.riskLevel}</Badge></div></CardHeader><AnimatePresence>{isExpanded&&(<motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}}><CardContent><Tabs defaultValue={selectedTab}><TabsList><div onClick={()=>setSelectedTab('chart')} className="contents"><TabsTrigger value="chart">Chart</TabsTrigger></div><div onClick={()=>setSelectedTab('education')} className="contents"><TabsTrigger value="education">Education</TabsTrigger></div></TabsList><TabsContent value="chart"><div className="w-full h-96"><ResponsiveContainer width="100%" height="100%"><LineChart data={payoffData}><CartesianGrid strokeDasharray="3 3" className="opacity-30"/><XAxis dataKey="stockPrice" label={{value:'Stock Price ($)',position:'insideBottom',offset:-5}}/><YAxis label={{value:'Profit/Loss ($)',angle:-90,position:'insideLeft'}}/><ReferenceArea y1={0} y2={maxPayoff} fill="rgba(34,197,94,0.1)"/><ReferenceArea y1={minPayoff} y2={0} fill="rgba(239,68,68,0.1)"/><Line type="monotone" dataKey="profitLoss" stroke="#2563eb" strokeWidth={3} dot={false}/><ReferenceLine y={0} stroke="#374151" strokeDasharray="2 2" strokeWidth={2}/><ReferenceLine x={optionsData.currentPrice} stroke="#2563eb" strokeDasharray="4 4" strokeWidth={2}/><RechartsTooltip content={({active,payload,label})=>{if(active&&payload&&payload.length){const val=payload[0].value as number;return(<div className="p-2 bg-white border rounded text-sm"><p>Stock: {label}</p><p>P/L: {val}</p><p>{val>0?'Above the breakeven price the strategy yields a profit':'Below the breakeven price the strategy loses'}</p></div>);}return null;}}/></LineChart></ResponsiveContainer></div></TabsContent><TabsContent value="education"><StrategyVisualizer legs={strategy.legs}/><ul className="list-disc pl-5 mt-2 text-sm">{strategy.whenToUse.map(w=>(<li key={w}>{w}</li>))}</ul></TabsContent></Tabs></CardContent></motion.div>)}</AnimatePresence></Card></motion.div>);};
-
- return(<div className="w-full max-w-7xl mx-auto p-6 space-y-6"><div className="text-center mb-8"><h1 className="mb-2">Options Trading Strategies</h1><p className="text-gray-600">Explore different options strategies and learn how their payoffs and Greeks work.</p><Button className="mt-4" aria-label="start walkthrough" onClick={()=>{setWalkthroughStep(0);setShowWalkthrough(true);setShowCelebration(false);}}>Start Walkthrough</Button></div>{showWalkthrough&&(<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><Card className="max-w-sm"><CardHeader><CardTitle>{steps[walkthroughStep].title}</CardTitle></CardHeader><CardContent><p className="mb-4 text-sm">{steps[walkthroughStep].content}</p><div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setShowWalkthrough(false)}>Skip</Button>{walkthroughStep<steps.length-1?(<Button onClick={()=>setWalkthroughStep(s=>s+1)}>Next</Button>):(<Button onClick={()=>{setShowWalkthrough(false);setShowCelebration(true);}}>Finish</Button>)}</div></CardContent></Card></div>)}{showCelebration&&(<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40"><Card className="max-w-sm"><CardContent className="p-6 text-center"><p className="text-lg mb-4">🎉 You're ready to explore!</p><Button onClick={()=>{setShowCelebration(false);setWalkthroughStep(0);setShowWalkthrough(true);}}>Replay Tour</Button></CardContent></Card></div>)}<TooltipProvider><Card className="mb-6"><CardHeader><CardTitle className="flex items-center gap-2"><Activity className="w-5 h-5"/>Market Parameters & Option Pricing Inputs</CardTitle></CardHeader><CardContent>{ParameterSlider('currentPrice',50,200,1)}{ParameterSlider('strikePrice',50,200,5)}{ParameterSlider('premium',0.5,30,0.25)}{ParameterSlider('daysToExpiry',1,365,1)}{ParameterSlider('impliedVolatility',5,100,1)}{ParameterSlider('interestRate',0,10,0.1)}{ParameterSlider('dividendYield',0,5,0.1)}<div className="flex gap-2 mt-4">{Object.entries(quickPresets).map(([k,v])=>(<Button key={k} onClick={()=>handlePreset(v as OptionsData)}>{k}</Button>))}</div></CardContent></Card></TooltipProvider><Card className="mb-6"><CardHeader><CardTitle className="flex items-center gap-2"><Zap className="w-5 h-5"/>Options Greeks</CardTitle></CardHeader><CardContent><GreeksExplainer optionsData={optionsData}/></CardContent></Card><div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{optionsStrategies.map(s=>(<StrategyCard key={s.id} strategy={s}/>))}</div></div>);};
-
+  return (
+    <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
+      <div className="text-center mb-8">
+        <h1 className="mb-2">Options Trading Strategies</h1>
+        <p className="text-gray-600">
+          Explore different options strategies and learn how their payoffs and
+          Greeks work.
+        </p>
+        <Button
+          className="mt-4"
+          aria-label="start walkthrough"
+          onClick={() => {
+            setWalkthroughStep(0);
+            setShowWalkthrough(true);
+            setShowCelebration(false);
+          }}
+        >
+          Start Walkthrough
+        </Button>
+      </div>
+      {showWalkthrough && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="max-w-sm">
+            <CardHeader>
+              <CardTitle>{walkthroughSteps[walkthroughStep].title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4 text-sm">
+                {walkthroughSteps[walkthroughStep].content}
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowWalkthrough(false)}
+                >
+                  Skip
+                </Button>
+                {walkthroughStep < walkthroughSteps.length - 1 ? (
+                  <Button onClick={() => setWalkthroughStep((s) => s + 1)}>
+                    Next
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => {
+                      setShowWalkthrough(false);
+                      setShowCelebration(true);
+                    }}
+                  >
+                    Finish
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {showCelebration && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
+          <Card className="max-w-sm">
+            <CardContent className="p-6 text-center">
+              <p className="text-lg mb-4">🎉 You're ready to explore!</p>
+              <Button
+                onClick={() => {
+                  setShowCelebration(false);
+                  setWalkthroughStep(0);
+                  setShowWalkthrough(true);
+                }}
+              >
+                Replay Tour
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      <TooltipProvider>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5" aria-hidden="true" />
+              Market Parameters & Option Pricing Inputs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {sliders.map((s) => (
+              <ParameterSlider
+                key={s.label}
+                label={s.label}
+                min={s.min}
+                max={s.max}
+                step={s.step}
+                value={optionsData[s.label]}
+                onChange={(v) =>
+                  setOptionsData((prev: OptionsData) => ({
+                    ...prev,
+                    [s.label]: v,
+                  }))
+                }
+              />
+            ))}
+            <div className="flex gap-2 mt-4">
+              {Object.entries(quickPresets).map(([k, v]) => (
+                <Button key={k} onClick={() => handlePreset(v as OptionsData)}>
+                  {k}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </TooltipProvider>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="w-5 h-5" aria-hidden="true" />
+            Options Greeks
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<div>Loading Greeks...</div>}>
+            <GreeksExplainer optionsData={optionsData} />
+          </Suspense>
+        </CardContent>
+      </Card>
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {optionsStrategies.map((s) => (
+          <StrategyCard key={s.id} strategy={s} />
+        ))}
+      </div>
+    </div>
+  );
+};
