@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from './ui/badge';
 import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { OptionsData } from './GreeksExplainer';
 
 interface StrategyLeg {
   action: 'Buy' | 'Sell';
@@ -27,17 +28,27 @@ const getTypeIcon = (type: string) => {
 
 interface StrategyVisualizerProps {
   legs: StrategyLeg[];
+  optionsData: OptionsData;
 }
 
-export const StrategyVisualizer: React.FC<StrategyVisualizerProps> = ({ legs }) => {
-  const netPremium = legs.reduce((sum, leg) => {
+export const StrategyVisualizer: React.FC<StrategyVisualizerProps> = ({ legs, optionsData }) => {
+  const legsWithDetails = legs.map((leg) => {
+    const isOption = leg.type === 'Call' || leg.type === 'Put';
+    return {
+      ...leg,
+      strike: isOption ? optionsData.strikePrice : undefined,
+      premium: isOption ? optionsData.premium : undefined,
+    };
+  });
+
+  const netPremium = legsWithDetails.reduce((sum, leg) => {
     const sign = leg.action === 'Buy' ? -1 : 1;
     return sum + (leg.premium ?? 0) * sign;
   }, 0);
 
   return (
     <div className="space-y-2">
-      {legs.map((leg, idx) => (
+      {legsWithDetails.map((leg, idx) => (
         <div
           key={idx}
           className={`flex items-center gap-2 border px-2 py-1 rounded text-sm ${getActionColor(
