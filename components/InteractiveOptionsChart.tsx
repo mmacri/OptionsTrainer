@@ -18,7 +18,37 @@ const optionsStrategies:OptionsStrategy[]=[{id:'long-call',title:'Long Call',des
 
 const quickPresets={ATMOption:{strikePrice:100,currentPrice:100,premium:3,daysToExpiry:30,impliedVolatility:20,interestRate:5,dividendYield:2},OTMCall:{strikePrice:105,currentPrice:100,premium:2,daysToExpiry:30,impliedVolatility:25,interestRate:5,dividendYield:2},OTMPut:{strikePrice:95,currentPrice:100,premium:2,daysToExpiry:30,impliedVolatility:25,interestRate:5,dividendYield:2},HighVol:{strikePrice:100,currentPrice:100,premium:8,daysToExpiry:7,impliedVolatility:50,interestRate:5,dividendYield:1}};
 
-const parameterTooltips:any={currentPrice:{title:'Current Stock Price (S)',content:'The current market price of the underlying stock. This determines option moneyness.'},strikePrice:{title:'Strike Price (K)',content:'The exercise price of the option contract.'},premium:{title:'Option Premium',content:'The price paid for the option contract. For short strategies this is the credit received.'},daysToExpiry:{title:'Days to Expiry (T)',content:'Number of days until the option expires. Shorter durations increase time decay (Theta).'},impliedVolatility:{title:'Implied Volatility (IV)',content:'Expected volatility of the underlying over the life of the option. Higher IV increases option premiums.'},interestRate:{title:'Risk-free Interest Rate (r)',content:'Annualized interest rate used in option pricing models. Higher rates generally raise call values and lower put values.'},dividendYield:{title:'Dividend Yield (q)',content:'Expected annual dividend yield of the underlying stock. Dividends decrease call values and increase put values.'}};
+// Tooltip content for each market parameter slider.
+const parameterTooltips: Record<keyof OptionsData, { title: string; content: string }> = {
+  currentPrice: {
+    title: 'Current Stock Price (S)',
+    content: 'The current market price of the underlying stock. This determines option moneyness.',
+  },
+  strikePrice: {
+    title: 'Strike Price (K)',
+    content: 'The exercise price of the option contract.',
+  },
+  premium: {
+    title: 'Option Premium',
+    content: 'The price paid for the option contract. For short strategies this is the credit received.',
+  },
+  daysToExpiry: {
+    title: 'Days to Expiry (T)',
+    content: 'Number of days until the option expires. Shorter durations increase time decay (Theta).',
+  },
+  impliedVolatility: {
+    title: 'Implied Volatility (IV)',
+    content: 'Expected volatility of the underlying over the life of the option. Higher IV increases option premiums.',
+  },
+  interestRate: {
+    title: 'Risk-free Interest Rate (r)',
+    content: 'Annualized interest rate used in option pricing models. Higher rates generally raise call values and lower put values.',
+  },
+  dividendYield: {
+    title: 'Dividend Yield (q)',
+    content: 'Expected annual dividend yield of the underlying stock. Dividends decrease call values and increase put values.',
+  },
+};
 
 const getCategoryColor=(c:string)=>c==='Bullish'?'bg-green-50 text-green-700 border-green-200':c==='Bearish'?'bg-red-50 text-red-700 border-red-200':c==='Neutral'?'bg-blue-50 text-blue-700 border-blue-200':'bg-purple-50 text-purple-700 border-purple-200';
 const getComplexityColor=(c:string)=>c==='Basic'?'bg-green-50 text-green-700 border-green-200':c==='Intermediate'?'bg-yellow-50 text-yellow-700 border-yellow-200':c==='Advanced'?'bg-red-50 text-red-700 border-red-200':'bg-gray-50 text-gray-700 border-gray-200';
@@ -28,7 +58,35 @@ const safePayoffCalculation=(s:number,strategy:OptionsStrategy,o:OptionsData)=>{
 
 export const InteractiveOptionsChart=()=>{const[expandedStrategy,setExpandedStrategy]=useState<string|null>(null);const[selectedTab,setSelectedTab]=useState<'chart'|'education'>('chart');const[optionsData,setOptionsData]=useState<OptionsData>({strikePrice:100,currentPrice:100,premium:5,daysToExpiry:30,impliedVolatility:25,interestRate:5,dividendYield:2});const[showWalkthrough,setShowWalkthrough]=useState(false);const[walkthroughStep,setWalkthroughStep]=useState(0);const[showCelebration,setShowCelebration]=useState(false);const steps=[{title:'Welcome',content:'This tour will guide you through the dashboard.'},{title:'Parameters',content:'Use these sliders to set market conditions and option inputs.'},{title:'Strategies',content:'Expand a strategy card to view its payoff chart or educational tips.'},{title:'Greeks',content:'Learn how the Greeks measure option sensitivity.'}];const handlePreset=(p:OptionsData)=>setOptionsData(p);const generatePayoffData=useMemo(()=>{return(strategy:OptionsStrategy):PayoffPoint[]=>{const data:PayoffPoint[]=[];const minPrice=Math.max(0,optionsData.strikePrice-30);const maxPrice=optionsData.strikePrice+30;for(let price=minPrice;price<=maxPrice;price+=2){data.push({stockPrice:price,profitLoss:safePayoffCalculation(price,strategy,optionsData)});}return data;};},[optionsData]);
 
- const ParameterSlider=(label:keyof OptionsData,min:number,max:number,step:number)=>{const val=(optionsData as any)[label] as number;return(<div className="mb-4" key={label}><div className="flex justify-between mb-1"><span className="text-sm capitalize">{label}</span><span className="text-sm">{val.toFixed(step<1?2:0)}</span></div><Tooltip><TooltipTrigger><Slider aria-label={label} aria-valuetext={`${val}`} min={min} max={max} step={step} value={val} onValueChange={(v)=>setOptionsData(prev=>({...prev,[label]:Number(v)}))}/></TooltipTrigger><TooltipContent><strong>{parameterTooltips[label].title}</strong><p>{parameterTooltips[label].content}</p></TooltipContent></Tooltip></div>);};
+ // Renders a labeled slider with a tooltip describing the parameter.
+ const ParameterSlider = (label: keyof OptionsData, min: number, max: number, step: number) => {
+   const val = (optionsData as any)[label] as number;
+   return (
+     <div className="mb-4" key={label}>
+       <div className="flex justify-between mb-1">
+         <span className="text-sm capitalize">{label}</span>
+         <span className="text-sm">{val.toFixed(step < 1 ? 2 : 0)}</span>
+       </div>
+       <Tooltip>
+         <TooltipTrigger>
+           <Slider
+             aria-label={label}
+             aria-valuetext={`${val}`}
+             min={min}
+             max={max}
+             step={step}
+             value={val}
+             onValueChange={(v) => setOptionsData((prev) => ({ ...prev, [label]: Number(v) }))}
+           />
+         </TooltipTrigger>
+         <TooltipContent>
+           <strong>{parameterTooltips[label].title}</strong>
+           <p>{parameterTooltips[label].content}</p>
+         </TooltipContent>
+       </Tooltip>
+     </div>
+   );
+ };
 
  const StrategyCard=({strategy}:{strategy:OptionsStrategy})=>{const isExpanded=expandedStrategy===strategy.id;const payoffData=generatePayoffData(strategy);const maxPayoff=Math.max(...payoffData.map(p=>p.profitLoss));const minPayoff=Math.min(...payoffData.map(p=>p.profitLoss));return(<motion.div layout initial={{opacity:0,y:20}} animate={{opacity:1,y:0}}><Card><CardHeader onClick={()=>setExpandedStrategy(isExpanded?null:strategy.id)} className="cursor-pointer"><CardTitle className="flex items-center gap-2">{strategy.title}<ChevronRight className={`w-4 h-4 transition-transform ${isExpanded?'rotate-90':''}`}/></CardTitle><CardDescription>{strategy.description}</CardDescription><div className="flex gap-1 mt-2"><Badge className={getCategoryColor(strategy.category)}>{strategy.category}</Badge><Badge className={getComplexityColor(strategy.complexity)}>{strategy.complexity}</Badge><Badge className={getRiskColor(strategy.riskLevel)}>{strategy.riskLevel}</Badge></div></CardHeader><AnimatePresence>{isExpanded&&(<motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}}><CardContent><Tabs defaultValue={selectedTab}><TabsList><div onClick={()=>setSelectedTab('chart')} className="contents"><TabsTrigger value="chart">Chart</TabsTrigger></div><div onClick={()=>setSelectedTab('education')} className="contents"><TabsTrigger value="education">Education</TabsTrigger></div></TabsList><TabsContent value="chart"><div className="w-full h-96"><ResponsiveContainer width="100%" height="100%"><LineChart data={payoffData}><CartesianGrid strokeDasharray="3 3" className="opacity-30"/><XAxis dataKey="stockPrice" label={{value:'Stock Price ($)',position:'insideBottom',offset:-5}}/><YAxis label={{value:'Profit/Loss ($)',angle:-90,position:'insideLeft'}}/><ReferenceArea y1={0} y2={maxPayoff} fill="rgba(34,197,94,0.1)"/><ReferenceArea y1={minPayoff} y2={0} fill="rgba(239,68,68,0.1)"/><Line type="monotone" dataKey="profitLoss" stroke="#2563eb" strokeWidth={3} dot={false}/><ReferenceLine y={0} stroke="#374151" strokeDasharray="2 2" strokeWidth={2}/><ReferenceLine x={optionsData.currentPrice} stroke="#2563eb" strokeDasharray="4 4" strokeWidth={2}/><RechartsTooltip content={({active,payload,label})=>{if(active&&payload&&payload.length){const val=payload[0].value as number;return(<div className="p-2 bg-white border rounded text-sm"><p>Stock: {label}</p><p>P/L: {val}</p><p>{val>0?'Above the breakeven price the strategy yields a profit':'Below the breakeven price the strategy loses'}</p></div>);}return null;}}/></LineChart></ResponsiveContainer></div></TabsContent><TabsContent value="education"><StrategyVisualizer legs={strategy.legs}/><ul className="list-disc pl-5 mt-2 text-sm">{strategy.whenToUse.map(w=>(<li key={w}>{w}</li>))}</ul></TabsContent></Tabs></CardContent></motion.div>)}</AnimatePresence></Card></motion.div>);};
 
