@@ -1,3 +1,12 @@
+import React from 'react';
+import { Badge } from './ui/badge';
+import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { OptionsData } from './GreeksExplainer';
+
+interface StrategyLeg {
+  action: 'Buy' | 'Sell';
+  type: 'Call' | 'Put' | 'Stock';
+
 import React from "react";
 import { Badge } from "./ui/badge";
 import { TrendingUp, TrendingDown, DollarSign } from "lucide-react";
@@ -12,9 +21,25 @@ import { TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 export interface StrategyLeg {
   action: "Buy" | "Sell";
   type: "Call" | "Put" | "Stock";
+
   strike?: number;
   premium?: number;
 }
+
+
+const getActionColor = (action: string) => {
+  return action === 'Buy'
+    ? 'bg-green-100 text-green-800 border-green-300'
+    : 'bg-red-100 text-red-800 border-red-300';
+};
+
+const getTypeIcon = (type: string) => {
+  return type === 'Call' ? (
+    <TrendingUp className="w-3 h-3" />
+  ) : type === 'Put' ? (
+    <TrendingDown className="w-3 h-3" />
+  ) : (
+    <DollarSign className="w-3 h-3" />
 
 // Highlight buys in green and sells in red for quick scanning.
 const getActionColor = (action: string) => {
@@ -31,11 +56,29 @@ const getTypeIcon = (type: string) => {
     <TrendingDown className="w-3 h-3" aria-hidden="true" />
   ) : (
     <DollarSign className="w-3 h-3" aria-hidden="true" />
+
   );
 };
 
 interface StrategyVisualizerProps {
   legs: StrategyLeg[];
+
+  optionsData: OptionsData;
+}
+
+export const StrategyVisualizer: React.FC<StrategyVisualizerProps> = ({ legs, optionsData }) => {
+  const legsWithDetails = legs.map((leg) => {
+    const isOption = leg.type === 'Call' || leg.type === 'Put';
+    return {
+      ...leg,
+      strike: isOption ? optionsData.strikePrice : undefined,
+      premium: isOption ? optionsData.premium : undefined,
+    };
+  });
+
+  const netPremium = legsWithDetails.reduce((sum, leg) => {
+    const sign = leg.action === 'Buy' ? -1 : 1;
+
 }
 
 export const StrategyVisualizer: React.FC<StrategyVisualizerProps> = ({
@@ -44,16 +87,25 @@ export const StrategyVisualizer: React.FC<StrategyVisualizerProps> = ({
   // Positive values imply a credit received; negative implies a debit.
   const netPremium = legs.reduce((sum, leg) => {
     const sign = leg.action === "Buy" ? -1 : 1;
+
     return sum + (leg.premium ?? 0) * sign;
   }, 0);
 
   return (
     <div className="space-y-2">
+
+      {legsWithDetails.map((leg, idx) => (
+        <div
+          key={idx}
+          className={`flex items-center gap-2 border px-2 py-1 rounded text-sm ${getActionColor(
+            leg.action
+
       {legs.map((leg, idx) => (
         <div
           key={idx}
           className={`flex items-center gap-2 border px-2 py-1 rounded text-sm ${getActionColor(
             leg.action,
+
           )}`}
         >
           {getTypeIcon(leg.type)}

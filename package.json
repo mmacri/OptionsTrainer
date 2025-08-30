@@ -3,6 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.7.2",
+    "lucide-react": "^0.344.0",
+    "motion": "^11.2.11"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "tailwindcss": "^4.0.0",
+    "vitest": "^1.6.0"
+
     "test": "echo 'No tests'",
     "build": "tailwindcss -i ./styles/globals.css -o dist/globals.css --minify && esbuild main.tsx --bundle --outfile=dist/bundle.js --loader:.tsx=tsx --loader:.ts=ts --format=esm --minify"
   },
