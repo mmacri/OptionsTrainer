@@ -6,10 +6,9 @@ import {
   CardTitle,
 } from './ui/card';
 import { Button } from './ui/button';
-import { TooltipProvider } from './ui/tooltip';
-import { Activity, Zap, HelpCircle, AlertCircle } from 'lucide-react';
+import { Zap, HelpCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import ParameterSlider from './ParameterSlider';
+import { OptionsParameters } from './OptionsParameters';
 import { GreeksExplainer, OptionsData } from './GreeksExplainer';
 import { StrategyCard } from './StrategyCard';
 import {
@@ -17,7 +16,6 @@ import {
   OptionsStrategy,
   PayoffPoint,
 } from '../lib/strategies';
-import { quickPresets } from '../lib/presets';
 import { validateParameters } from '../lib/optionsUtils';
 
 export { validateParameters } from '../lib/optionsUtils';
@@ -198,95 +196,11 @@ export const InteractiveOptionsChart = () => {
         </div>
       )}
 
-      <TooltipProvider>
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              Market Parameters & Option Pricing Inputs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              <ParameterSlider
-                label="currentPrice"
-                value={optionsData.currentPrice}
-                min={50}
-                max={200}
-                step={1}
-                onChange={(v) => updateOption('currentPrice', v)}
-              />
-              <ParameterSlider
-                label="strikePrice"
-                value={optionsData.strikePrice}
-                min={50}
-                max={200}
-                step={5}
-                onChange={(v) => updateOption('strikePrice', v)}
-              />
-              <ParameterSlider
-                label="premium"
-                value={optionsData.premium}
-                min={0.5}
-                max={30}
-                step={0.25}
-                onChange={(v) => updateOption('premium', v)}
-              />
-              <ParameterSlider
-                label="daysToExpiry"
-                value={optionsData.daysToExpiry}
-                min={1}
-                max={365}
-                step={1}
-                onChange={(v) => updateOption('daysToExpiry', v)}
-              />
-              <ParameterSlider
-                label="impliedVolatility"
-                value={optionsData.impliedVolatility}
-                min={5}
-                max={100}
-                step={1}
-                onChange={(v) => updateOption('impliedVolatility', v)}
-              />
-              <ParameterSlider
-                label="interestRate"
-                value={optionsData.interestRate}
-                min={0}
-                max={10}
-                step={0.1}
-                onChange={(v) => updateOption('interestRate', v)}
-              />
-              <ParameterSlider
-                label="dividendYield"
-                value={optionsData.dividendYield}
-                min={0}
-                max={5}
-                step={0.1}
-                onChange={(v) => updateOption('dividendYield', v)}
-              />
-            </div>
-            <div className="flex flex-wrap gap-2 mt-4">
-              {Object.entries(quickPresets).map(([key, preset]) => {
-                const labels: Record<string, string> = {
-                  ATMOption: 'ATM Option',
-                  OTMCall: 'OTM Call',
-                  OTMPut: 'OTM Put',
-                  HighVol: 'High Volatility',
-                };
-                return (
-                  <Button
-                    key={key}
-                    size="sm"
-                    onClick={() => handlePreset(preset, labels[key])}
-                  >
-                    {labels[key]}
-                  </Button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </TooltipProvider>
+      <OptionsParameters
+        optionsData={optionsData}
+        onChange={updateOption}
+        onPreset={handlePreset}
+      />
 
       <Card className="mb-6">
         <CardHeader>
