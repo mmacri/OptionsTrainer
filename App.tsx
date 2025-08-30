@@ -1,3 +1,6 @@
+
+import React from 'react';
+import { InteractiveOptionsChart } from './components/InteractiveOptionsChart';
 import React, { useEffect, useState, Suspense, lazy } from "react";
 import "./styles/globals.css";
 import LandingPage from "./components/LandingPage";

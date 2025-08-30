@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --color-primary: #2563eb;
@@ -11,10 +9,15 @@
 }
 
 body {
+
+  background-color: #ffffff;
+  color: #111827;
+
   @apply bg-white text-gray-900;
   font-family: var(--font-sans);
 }
 
 .dark body {
   @apply bg-gray-900 text-gray-100;
+
 }
