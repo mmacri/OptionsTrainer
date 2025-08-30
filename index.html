@@ -1,0 +1,315 @@
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Options Trainer</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+
+
+    <title>Options Trading Dashboard</title>
+    <link rel="stylesheet" href="dist/globals.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="dist/bundle.js"></script>
+    <meta
+      name="description"
+      content="Interactive options trading strategies dashboard and education platform."
+    />
+    <meta
+      name="keywords"
+      content="options trading, finance, strategy, education"
+    />
+    <meta property="og:title" content="Options Trading Dashboard" />
+    <meta
+      property="og:description"
+      content="Visualize option payoffs and learn the Greeks with interactive tools."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Options Trading Dashboard</title>
+  </head>
+  <body class="min-h-screen bg-white text-gray-900">
+    <noscript>
+      This application requires JavaScript to run the interactive dashboard and
+      educational workflows.
+    </noscript>
+    <div id="root">
+      <!-- Landing page skeleton -->
+      <div class="min-h-screen flex flex-col">
+        <header class="p-4 flex justify-between items-center">
+          <h1 class="text-2xl font-bold">Options Trainer</h1>
+          <button
+            aria-label="toggle theme"
+            class="px-2 py-1 border rounded"
+          >
+            Dark Mode
+          </button>
+        </header>
+        <main
+          class="flex-1 flex flex-col items-center justify-center text-center p-4"
+        >
+          <h2 class="text-3xl font-semibold mb-4">Master Options Strategies</h2>
+          <p class="mb-6 max-w-xl">
+            Interactive tools to visualize payoffs and understand Greeks before
+            you trade.
+          </p>
+          <ul class="mb-6 space-y-2">
+            <li>Visualize payoff diagrams</li>
+            <li>Learn options Greeks with examples</li>
+            <li>Apply quick market presets</li>
+          </ul>
+          <button
+            class="bg-blue-600 text-white px-6 py-2 rounded"
+            aria-label="launch dashboard"
+          >
+            Launch Dashboard
+          </button>
+        </main>
+        <footer class="p-4 text-center text-sm">
+          <p>© 2024 Options Trainer. For educational purposes only.</p>
+          <nav class="mt-2">
+            <a href="#docs" class="underline mx-2">Documentation</a>
+            <a href="#disclaimer" class="underline mx-2">Disclaimer</a>
+          </nav>
+        </footer>
+      </div>
+
+      <!-- Dashboard skeleton -->
+      <div id="dashboard" hidden>
+        <div class="p-4 space-y-6">
+          <!-- Market Parameters -->
+          <section>
+            <h2
+              class="flex items-center gap-2 text-xl font-semibold"
+              aria-label="market parameters"
+            >
+              <span aria-hidden="true">⚡</span>
+              Market Parameters & Option Pricing Inputs
+            </h2>
+            <div class="mt-4 space-y-4">
+              <label class="block"
+                ><span class="sr-only">Current Price</span>
+                <input
+                  type="range"
+                  aria-label="current price"
+                  min="50"
+                  max="200"
+                  step="1"
+                  value="100"
+                />
+              </label>
+              <label class="block"
+                ><span class="sr-only">Strike Price</span>
+                <input
+                  type="range"
+                  aria-label="strike price"
+                  min="50"
+                  max="200"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <label class="block"
+                ><span class="sr-only">Premium</span>
+                <input
+                  type="range"
+                  aria-label="premium"
+                  min="0.5"
+                  max="30"
+                  step="0.25"
+                  value="5"
+                />
+              </label>
+              <label class="block"
+                ><span class="sr-only">Days to Expiry</span>
+                <input
+                  type="range"
+                  aria-label="days to expiry"
+                  min="1"
+                  max="365"
+                  step="1"
+                  value="30"
+                />
+              </label>
+              <label class="block"
+                ><span class="sr-only">Implied Volatility</span>
+                <input
+                  type="range"
+                  aria-label="implied volatility"
+                  min="5"
+                  max="100"
+                  step="1"
+                  value="25"
+                />
+              </label>
+              <label class="block"
+                ><span class="sr-only">Interest Rate</span>
+                <input
+                  type="range"
+                  aria-label="interest rate"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value="5"
+                />
+              </label>
+              <label class="block"
+                ><span class="sr-only">Dividend Yield</span>
+                <input
+                  type="range"
+                  aria-label="dividend yield"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value="2"
+                />
+              </label>
+              <div class="flex gap-2 mt-4">
+                <button class="px-2 py-1 border rounded">ATMOption</button>
+                <button class="px-2 py-1 border rounded">OTMCall</button>
+                <button class="px-2 py-1 border rounded">OTMPut</button>
+                <button class="px-2 py-1 border rounded">HighVol</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Profit/Loss Chart -->
+          <section>
+            <h2
+              class="flex items-center gap-2 text-xl font-semibold"
+              aria-label="profit loss chart"
+            >
+              <span aria-hidden="true">📈</span> Profit/Loss Chart
+            </h2>
+            <div
+              class="w-full h-96 bg-gray-100 flex items-center justify-center"
+            >
+              Chart Loading...
+            </div>
+          </section>
+
+          <!-- Options Greeks -->
+          <section>
+            <h2
+              class="flex items-center gap-2 text-xl font-semibold"
+              aria-label="options greeks"
+            >
+              <span aria-hidden="true">🔥</span> Options Greeks
+            </h2>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-4">
+              <div class="border rounded p-4">
+                <h3 class="font-medium flex items-center gap-2">
+                  Δ Delta
+                </h3>
+                <p class="text-sm mb-2">Call: 0.00 | Put: 0.00</p>
+              </div>
+              <div class="border rounded p-4">
+                <h3 class="font-medium flex items-center gap-2">
+                  Γ Gamma
+                </h3>
+                <p class="text-sm mb-2">0.00</p>
+              </div>
+              <div class="border rounded p-4">
+                <h3 class="font-medium flex items-center gap-2">
+                  Θ Theta
+                </h3>
+                <p class="text-sm mb-2">0.00</p>
+              </div>
+              <div class="border rounded p-4">
+                <h3 class="font-medium flex items-center gap-2">
+                  ν Vega
+                </h3>
+                <p class="text-sm mb-2">0.00</p>
+              </div>
+              <div class="border rounded p-4">
+                <h3 class="font-medium flex items-center gap-2">
+                  ρ Rho
+                </h3>
+                <p class="text-sm mb-2">Call: 0.00 | Put: 0.00</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Strategies Grid -->
+          <section>
+            <h2 class="text-xl font-semibold mb-4">Strategies</h2>
+            <div
+              class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            >
+              <article class="border rounded p-4">
+                <h3 class="font-medium">Long Call</h3>
+                <p class="text-sm mb-2">
+                  Buy a call option expecting the stock price to rise
+                  significantly above the strike price.
+                </p>
+                <ul class="text-xs list-disc pl-4 space-y-1">
+                  <li>You expect the stock to rise significantly</li>
+                  <li>Earnings announcement approaching with positive expectations</li>
+                  <li>Technical breakout patterns suggesting upward momentum</li>
+                  <li>Low cost way to participate in upside potential</li>
+                </ul>
+              </article>
+              <article class="border rounded p-4">
+                <h3 class="font-medium">Long Put</h3>
+                <p class="text-sm mb-2">
+                  Buy a put option expecting the stock price to fall significantly
+                  below the strike price.
+                </p>
+                <ul class="text-xs list-disc pl-4 space-y-1">
+                  <li>You expect the stock to decline significantly</li>
+                  <li>Negative news or poor earnings outlook for the company</li>
+                  <li>Hedging against a long position in the underlying stock</li>
+                  <li>Low cost way to speculate on downside movement</li>
+                </ul>
+              </article>
+              <article class="border rounded p-4">
+                <h3 class="font-medium">Covered Call</h3>
+                <p class="text-sm mb-2">
+                  Sell a call option while holding the underlying stock to
+                  generate income and cap potential upside.
+                </p>
+                <ul class="text-xs list-disc pl-4 space-y-1">
+                  <li>You believe the stock will trade sideways</li>
+                  <li>You want to generate income from a long stock position</li>
+                  <li>You are willing to sell your shares at the strike price</li>
+                  <li>
+                    You expect moderate price appreciation but want some
+                    downside protection
+                  </li>
+                </ul>
+              </article>
+              <article class="border rounded p-4">
+                <h3 class="font-medium">Protective Put</h3>
+                <p class="text-sm mb-2">
+                  Buy a put option to protect a long stock position from
+                  downside risk while maintaining upside potential.
+                </p>
+                <ul class="text-xs list-disc pl-4 space-y-1">
+                  <li>You own the stock and want downside protection</li>
+                  <li>Volatile market conditions with uncertain outlook</li>
+                  <li>
+                    Earnings announcements or macro events could cause large
+                    drops
+                  </li>
+                  <li>
+                    Insurance against a decline while retaining upside exposure
+                  </li>
+                </ul>
+              </article>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>
