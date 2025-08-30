@@ -8,7 +8,8 @@ import {
 } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
-import { ChevronRight } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { ChevronRight, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ResponsiveContainer,
@@ -101,7 +102,7 @@ export const StrategyCard = ({
                     <TabsTrigger value="education">Education</TabsTrigger>
                   </TabsList>
                   <TabsContent value="chart">
-                    <div className="w-full h-96">
+                    <div className="w-full h-96 relative">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={payoffData}>
                           <CartesianGrid
@@ -172,6 +173,26 @@ export const StrategyCard = ({
                           />
                         </LineChart>
                       </ResponsiveContainer>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs flex items-center gap-1">
+                            <Info className="w-3 h-3" /> Stock Price ($)
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          The horizontal axis shows the range of possible stock prices.
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 -rotate-90 origin-left text-xs flex items-center gap-1">
+                            <Info className="w-3 h-3" /> Profit/Loss ($)
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          The vertical axis shows profit or loss per share.
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </TabsContent>
                   <TabsContent value="education">

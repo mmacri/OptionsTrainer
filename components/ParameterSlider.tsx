@@ -2,7 +2,7 @@ import React from "react";
 import { Slider } from "./ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import type { OptionsData } from "./GreeksExplainer";
-import { parameterTooltips } from "./config";
+import { parameterTooltips } from "../lib/presets";
 
 interface ParameterSliderProps {
   label: keyof OptionsData;
