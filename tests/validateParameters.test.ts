@@ -17,6 +17,17 @@ describe('validateParameters', () => {
     expect(() => validateParameters({ ...base, strikePrice: -1 })).toThrow();
   });
 
+
+  it('throws for non-positive current price', () => {
+    expect(() => validateParameters({ ...base, currentPrice: 0 })).toThrow();
+  });
+
+  it('throws for negative implied volatility', () => {
+    expect(() =>
+      validateParameters({ ...base, impliedVolatility: -1 })
+    ).toThrow();
+  });
+
   it('passes for valid data', () => {
     expect(() => validateParameters(base)).not.toThrow();
   });

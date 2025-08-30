@@ -1,3 +1,4 @@
+
 import React,{useEffect,useMemo,useState} from 'react';
 import{Card,CardContent,CardDescription,CardHeader,CardTitle}from './ui/card';
 import{Button}from './ui/button';
@@ -11,22 +12,165 @@ import{ResponsiveContainer,LineChart,Line,CartesianGrid,XAxis,YAxis,Tooltip as R
 import{GreeksExplainer,OptionsData}from './GreeksExplainer';
 import{StrategyVisualizer}from './StrategyVisualizer';
 
-interface PayoffPoint{stockPrice:number;profitLoss:number;}
-interface OptionsStrategy{ id:string;title:string;description:string;category:string;complexity:string;riskLevel:string;maxProfit:string;maxLoss:string;breakeven:string;whenToUse:string[];calculatePayoff:(stockPrice:number,options:OptionsData)=>number;legs:{action:string;type:string;strike?:number;premium?:number}[];}
+import React, { useEffect, useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Zap } from 'lucide-react';
+import { GreeksExplainer, OptionsData } from './GreeksExplainer';
+import { StrategyCard } from './StrategyCard';
+import { OptionsParameters } from './OptionsParameters';
+import {
+  optionsStrategies,
+  OptionsStrategy,
+  PayoffPoint,
+} from '../lib/strategies';
+import {
+  validateParameters,
+  safePayoffCalculation,
+} from '../lib/optionsUtils';
 
-const optionsStrategies:OptionsStrategy[]=[{id:'long-call',title:'Long Call',description:'Buy a call option expecting the stock price to rise significantly above the strike price.',category:'Bullish',complexity:'Basic',riskLevel:'Low',maxProfit:'Unlimited',maxLoss:'Premium Paid',breakeven:'Strike Price + Premium',whenToUse:['You expect the stock to rise significantly','Earnings announcement approaching with positive expectations','Technical breakout patterns suggesting upward momentum','Low cost way to participate in upside potential'],calculatePayoff:(s,o)=>Math.max(s-o.strikePrice,0)-o.premium,legs:[{action:'Buy',type:'Call'}]},{id:'long-put',title:'Long Put',description:'Buy a put option expecting the stock price to fall significantly below the strike price.',category:'Bearish',complexity:'Basic',riskLevel:'Low',maxProfit:'Strike Price - Premium',maxLoss:'Premium Paid',breakeven:'Strike Price - Premium',whenToUse:['You expect the stock to decline significantly','Negative news or poor earnings outlook for the company','Hedging against a long position in the underlying stock','Low cost way to speculate on downside movement'],calculatePayoff:(s,o)=>Math.max(o.strikePrice-s,0)-o.premium,legs:[{action:'Buy',type:'Put'}]},{id:'covered-call',title:'Covered Call',description:'Sell a call option while holding the underlying stock to generate income and cap potential upside.',category:'Neutral',complexity:'Basic',riskLevel:'Medium',maxProfit:'Strike Price - Stock Cost + Premium',maxLoss:'Stock Cost - Premium',breakeven:'Stock Cost - Premium',whenToUse:['You believe the stock will trade sideways','You want to generate income from a long stock position','You are willing to sell your shares at the strike price','You expect moderate price appreciation but want some downside protection'],calculatePayoff:(s,o)=>{const stockPayoff=s-o.currentPrice;const shortCall=-Math.max(s-o.strikePrice,0)+o.premium;return stockPayoff+shortCall;},legs:[{action:'Sell',type:'Call'},{action:'Buy',type:'Stock'}]},{id:'protective-put',title:'Protective Put',description:'Buy a put option to protect a long stock position from downside risk while maintaining upside potential.',category:'Neutral',complexity:'Basic',riskLevel:'Low',maxProfit:'Unlimited',maxLoss:'Stock Cost + Premium - Strike Price',breakeven:'Stock Cost + Premium',whenToUse:['You own the stock and want downside protection','Volatile market conditions with uncertain outlook','Earnings announcements or macro events could cause large drops','Insurance against a decline while retaining upside exposure'],calculatePayoff:(s,o)=>{const stockPayoff=s-o.currentPrice;const longPut=Math.max(o.strikePrice-s,0)-o.premium;return stockPayoff+longPut;},legs:[{action:'Buy',type:'Stock'},{action:'Buy',type:'Put'}]}];
 
-const quickPresets={ATMOption:{strikePrice:100,currentPrice:100,premium:3,daysToExpiry:30,impliedVolatility:20,interestRate:5,dividendYield:2},OTMCall:{strikePrice:105,currentPrice:100,premium:2,daysToExpiry:30,impliedVolatility:25,interestRate:5,dividendYield:2},OTMPut:{strikePrice:95,currentPrice:100,premium:2,daysToExpiry:30,impliedVolatility:25,interestRate:5,dividendYield:2},HighVol:{strikePrice:100,currentPrice:100,premium:8,daysToExpiry:7,impliedVolatility:50,interestRate:5,dividendYield:1}};
+export { validateParameters } from '../lib/optionsUtils';
+
+export const InteractiveOptionsChart = () => {
+  const [expandedStrategy, setExpandedStrategy] = useState<string | null>(
+    null,
+  );
+  const [optionsData, setOptionsData] = useState<OptionsData>({
+    strikePrice: 100,
+    currentPrice: 100,
+    premium: 5,
+    daysToExpiry: 30,
+    impliedVolatility: 25,
+    interestRate: 5,
+    dividendYield: 2,
+  });
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+
+  const handlePreset = (p: OptionsData) => {
+    validateParameters(p);
+    setOptionsData(p);
+  };
+
 
 type TooltipInfo={title:string;content:string};
 const parameterTooltips:Record<keyof OptionsData,TooltipInfo>={currentPrice:{title:'Current Stock Price (S)',content:'The current market price of the underlying stock. This determines option moneyness.'},strikePrice:{title:'Strike Price (K)',content:'The exercise price of the option contract.'},premium:{title:'Option Premium',content:'The price paid for the option contract. For short strategies this is the credit received.'},daysToExpiry:{title:'Days to Expiry (T)',content:'Number of days until the option expires. Shorter durations increase time decay (Theta).'},impliedVolatility:{title:'Implied Volatility (IV)',content:'Expected volatility of the underlying over the life of the option. Higher IV increases option premiums.'},interestRate:{title:'Risk-free Interest Rate (r)',content:'Annualized interest rate used in option pricing models. Higher rates generally raise call values and lower put values.'},dividendYield:{title:'Dividend Yield (q)',content:'Expected annual dividend yield of the underlying stock. Dividends decrease call values and increase put values.'}};
 
-const getCategoryColor=(c:string)=>c==='Bullish'?'bg-green-50 text-green-700 border-green-200':c==='Bearish'?'bg-red-50 text-red-700 border-red-200':c==='Neutral'?'bg-blue-50 text-blue-700 border-blue-200':c==='Volatility'?'bg-purple-50 text-purple-700 border-purple-200':'bg-blue-50 text-blue-700 border-blue-200';
-const getComplexityColor=(c:string)=>c==='Basic'?'bg-green-50 text-green-700 border-green-200':c==='Intermediate'?'bg-yellow-50 text-yellow-700 border-yellow-200':c==='Advanced'?'bg-red-50 text-red-700 border-red-200':'bg-gray-50 text-gray-700 border-gray-200';
-const getRiskColor=(r:string)=>r==='Low'?'bg-green-50 text-green-700 border-green-200':r==='Medium'?'bg-yellow-50 text-yellow-700 border-yellow-200':r==='High'?'bg-orange-50 text-orange-700 border-orange-200':r==='Unlimited'?'bg-red-50 text-red-700 border-red-200':'bg-gray-50 text-gray-700 border-gray-200';
+  const handleWalkthroughClose = () => setShowWalkthrough(false);
+
+
+  useEffect(() => {
+    try {
+      validateParameters(optionsData);
+    } catch (e) {
+      console.error((e as Error).message);
+    }
+  }, [optionsData]);
+
 
 export const validateParameters=(d:OptionsData)=>{if(d.strikePrice<=0)throw new Error('Strike price must be positive');if(d.premium<0)throw new Error('Premium cannot be negative');if(d.daysToExpiry<=0)throw new Error('Days to expiry must be positive');};
 const safePayoffCalculation=(s:number,strategy:OptionsStrategy,o:OptionsData)=>{try{return strategy.calculatePayoff(s,o);}catch(e){console.warn('Payoff calculation error:',e);return 0;}};
+
+  const generatePayoffData = useMemo(
+    () => (strategy: OptionsStrategy): PayoffPoint[] => {
+      const data: PayoffPoint[] = [];
+      const minPrice = Math.max(0, optionsData.strikePrice - 30);
+      const maxPrice = optionsData.strikePrice + 30;
+
+
+      for (let price = minPrice; price <= maxPrice; price += 2) {
+        const payoff = safePayoffCalculation(price, strategy, optionsData);
+        data.push({ stockPrice: price, profitLoss: payoff });
+      }
+
+      return data;
+    },
+    [optionsData],
+  );
+
+  return (
+    <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
+      <div className="text-center mb-8">
+        <h1 className="mb-2">Options Trading Strategies</h1>
+        <p className="text-gray-600">
+          Explore different options strategies and learn how their payoffs and
+          Greeks work.
+        </p>
+      </div>
+      {showWalkthrough && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <Card>
+            <CardContent>
+              <p>Welcome to the walkthrough!</p>
+              <Button onClick={handleWalkthroughClose}>Close</Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      <OptionsParameters
+        optionsData={optionsData}
+        onChange={setOptionsData}
+        onPreset={handlePreset}
+      />
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="w-5 h-5" />
+            Options Greeks
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <GreeksExplainer optionsData={optionsData} />
+        </CardContent>
+      </Card>
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {optionsStrategies.map((s) => (
+          <StrategyCard
+            key={s.id}
+            strategy={s}
+            isExpanded={expandedStrategy === s.id}
+            onToggle={(id) =>
+              setExpandedStrategy(expandedStrategy === id ? null : id)
+            }
+            optionsData={optionsData}
+            generatePayoffData={generatePayoffData}
+          />
+        ))}
+
+const XAxisLabel=({viewBox}:{viewBox:any})=>{
+ const {x,y,width}=viewBox;
+ return(
+  <Tooltip>
+   <TooltipTrigger asChild>
+    <text x={x+width/2} y={y+30} textAnchor="middle">Stock Price ($)</text>
+   </TooltipTrigger>
+   <TooltipContent>
+    <p className="text-xs">Horizontal axis shows possible stock prices at expiration.</p>
+   </TooltipContent>
+  </Tooltip>
+ );
+};
+
+const YAxisLabel=({viewBox}:{viewBox:any})=>{
+ const {x,y,height}=viewBox;
+ return(
+  <Tooltip>
+   <TooltipTrigger asChild>
+    <text
+     x={x-40}
+     y={y+height/2}
+     textAnchor="middle"
+     transform={`rotate(-90, ${x-40}, ${y+height/2})`}
+    >
+     Profit/Loss ($)
+    </text>
+   </TooltipTrigger>
+   <TooltipContent>
+    <p className="text-xs">Vertical axis shows profit or loss per share.</p>
+   </TooltipContent>
+  </Tooltip>
+ );
+};
 
 export const InteractiveOptionsChart=()=>{
  const[expandedStrategy,setExpandedStrategy]=useState<string|null>(null);
@@ -34,6 +178,9 @@ export const InteractiveOptionsChart=()=>{
  const[optionsData,setOptionsData]=useState<OptionsData>({strikePrice:100,currentPrice:100,premium:5,daysToExpiry:30,impliedVolatility:25,interestRate:5,dividendYield:2});
  const[showWalkthrough,setShowWalkthrough]=useState(false);
  const handlePreset=(p:OptionsData)=>{validateParameters(p);setOptionsData(p);};
+ const handlePreset=(p:OptionsData)=>{
+  try{validateParameters(p);setOptionsData(p);}catch(e){console.warn('Invalid preset',e);}
+ };
  const handleWalkthroughClose=()=>setShowWalkthrough(false);
  useEffect(()=>{try{validateParameters(optionsData);}catch(e){console.error((e as Error).message);}},[optionsData]);
  const generatePayoffData=useMemo(()=>{return(strategy:OptionsStrategy):PayoffPoint[]=>{const data:PayoffPoint[]=[];const minPrice=Math.max(0,optionsData.strikePrice-30);const maxPrice=optionsData.strikePrice+30;for(let price=minPrice;price<=maxPrice;price+=2){const payoff=safePayoffCalculation(price,strategy,optionsData);data.push({stockPrice:price,profitLoss:payoff});}return data;};},[optionsData]);
@@ -52,8 +199,16 @@ const ParameterSlider=(label:keyof OptionsData,min:number,max:number,step:number
      min={min}
      max={max}
      step={step}
+
      value={optionsData[label]}
      onValueChange={(v)=>setOptionsData(prev=>({...prev,[label]:v}))}
+
+     value={[optionsData[label]]}
+     onValueChange={(v)=>setOptionsData(prev=>{
+      const updated={...prev,[label]:v[0]};
+      try{validateParameters(updated);return updated;}catch(e){console.warn('Invalid parameters',e);return prev;}
+     })}
+
     />
    </TooltipTrigger>
    <TooltipContent>
@@ -64,7 +219,92 @@ const ParameterSlider=(label:keyof OptionsData,min:number,max:number,step:number
  </div>
 );
 
+
 const StrategyCard=({strategy}:{strategy:OptionsStrategy})=>{const isExpanded=expandedStrategy===strategy.id;const payoffData=generatePayoffData(strategy);const maxPayoff=Math.max(...payoffData.map(p=>p.profitLoss));const minPayoff=Math.min(...payoffData.map(p=>p.profitLoss));return(<motion.div layout initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.3}}><Card><CardHeader onClick={()=>setExpandedStrategy(isExpanded?null:strategy.id)} className="cursor-pointer"><CardTitle className="flex items-center gap-2">{strategy.title}<ChevronRight className={`w-4 h-4 transition-transform ${isExpanded?'rotate-90':''}`}/></CardTitle><CardDescription>{strategy.description}</CardDescription><div className="flex gap-1 mt-2"><Badge className={getCategoryColor(strategy.category)}>{strategy.category}</Badge><Badge className={getComplexityColor(strategy.complexity)}>{strategy.complexity}</Badge><Badge className={getRiskColor(strategy.riskLevel)}>{strategy.riskLevel}</Badge></div></CardHeader><AnimatePresence>{isExpanded&&(<motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}} transition={{duration:0.3}}><CardContent><Tabs value={selectedTab} onValueChange={(v)=>setSelectedTab(v as 'chart'|'education')}><TabsList><TabsTrigger value="chart">Chart</TabsTrigger><TabsTrigger value="education">Education</TabsTrigger></TabsList><TabsContent value="chart"><div className="w-full h-96"><ResponsiveContainer width="100%" height="100%"><LineChart data={payoffData}><CartesianGrid strokeDasharray="3 3" className="opacity-30"/><XAxis dataKey="stockPrice" label={{value:'Stock Price ($)',position:'insideBottom',offset:-5}}/><YAxis label={{value:'Profit/Loss ($)',angle:-90,position:'insideLeft'}}/><ReferenceArea y1={0} y2={maxPayoff} fill="rgba(34,197,94,0.1)"/><ReferenceArea y1={minPayoff} y2={0} fill="rgba(239,68,68,0.1)"/><Line type="monotone" dataKey="profitLoss" stroke="#2563eb" strokeWidth={3} dot={false}/><ReferenceLine y={0} stroke="#374151" strokeDasharray="2 2" strokeWidth={2}/><ReferenceLine x={optionsData.currentPrice} stroke="#2563eb" strokeDasharray="4 4" strokeWidth={2}/><RechartsTooltip content={({active,payload,label})=>{if(active&&payload&&payload.length){return(<div className="p-2 bg-white border rounded text-sm"><p>Stock: {label}</p><p>P/L: {payload[0].value}</p><p>{payload[0].value>0?'Above the breakeven price the strategy yields a profit':'Below the breakeven price the strategy loses'}</p></div>);}return null;}}/></LineChart></ResponsiveContainer></div></TabsContent><TabsContent value="education"><StrategyVisualizer legs={strategy.legs} optionsData={optionsData}/><ul className="list-disc pl-5 mt-2 text-sm">{strategy.whenToUse.map(w=>(<li key={w}>{w}</li>))}</ul></TabsContent></Tabs></CardContent></motion.div>)}</AnimatePresence></Card></motion.div>);};
+
+const StrategyCard=({strategy}:{strategy:OptionsStrategy})=>{
+ const isExpanded=expandedStrategy===strategy.id;
+ const payoffData=generatePayoffData(strategy);
+ const maxPayoff=Math.max(...payoffData.map(p=>p.profitLoss));
+ const minPayoff=Math.min(...payoffData.map(p=>p.profitLoss));
+ return(
+  <motion.div layout initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.3}}>
+   <Card>
+    <CardHeader onClick={()=>setExpandedStrategy(isExpanded?null:strategy.id)} className="cursor-pointer">
+     <CardTitle className="flex items-center gap-2">
+      {strategy.title}
+      <motion.div animate={{rotate:isExpanded?90:0}} transition={{duration:0.2}}>
+       <ChevronRight className="w-4 h-4"/>
+      </motion.div>
+     </CardTitle>
+     <CardDescription>{strategy.description}</CardDescription>
+     <div className="flex gap-1 mt-2">
+      <Badge className={getCategoryColor(strategy.category)}>{strategy.category}</Badge>
+      <Badge className={getComplexityColor(strategy.complexity)}>{strategy.complexity}</Badge>
+      <Badge className={getRiskColor(strategy.riskLevel)}>{strategy.riskLevel}</Badge>
+     </div>
+    </CardHeader>
+    <AnimatePresence>
+     {isExpanded&&(
+      <motion.div
+       initial={{height:0,opacity:0}}
+       animate={{height:'auto',opacity:1}}
+       exit={{height:0,opacity:0}}
+       transition={{duration:0.3}}
+      >
+       <CardContent>
+        <Tabs value={selectedTab} onValueChange={(v)=>setSelectedTab(v as 'chart'|'education')}>
+         <TabsList>
+          <TabsTrigger value="chart">Chart</TabsTrigger>
+          <TabsTrigger value="education">Education</TabsTrigger>
+         </TabsList>
+         <TabsContent value="chart">
+          <div className="w-full h-96">
+           <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={payoffData}>
+             <CartesianGrid strokeDasharray="3 3" className="opacity-30"/>
+             <XAxis dataKey="stockPrice" label={<XAxisLabel/>}/>
+             <YAxis label={<YAxisLabel/>}/>
+             <ReferenceArea y1={0} y2={maxPayoff} fill="rgba(34,197,94,0.1)"/>
+             <ReferenceArea y1={minPayoff} y2={0} fill="rgba(239,68,68,0.1)"/>
+             <Line type="monotone" dataKey="profitLoss" stroke="#2563eb" strokeWidth={3} dot={false}/>
+             <ReferenceLine y={0} stroke="#374151" strokeDasharray="2 2" strokeWidth={2}/>
+             <ReferenceLine x={optionsData.currentPrice} stroke="#2563eb" strokeDasharray="4 4" strokeWidth={2}/>
+             <RechartsTooltip content={({active,payload,label})=>{
+              if(active&&payload&&payload.length){
+               const value=payload[0].value as number;
+               return(
+                <div className="p-2 bg-white border rounded text-sm">
+                 <p>Stock: {label}</p>
+                 <p>P/L: {value}</p>
+                 <p>{value>0?'Above the breakeven price the strategy yields a profit':'Below the breakeven price the strategy loses'}</p>
+                </div>
+               );
+              }
+              return null;
+             }}/>
+            </LineChart>
+           </ResponsiveContainer>
+          </div>
+         </TabsContent>
+         <TabsContent value="education">
+          <StrategyVisualizer legs={strategy.legs}/>
+          <ul className="list-disc pl-5 mt-2 text-sm">
+           {strategy.whenToUse.map(w=>(
+            <li key={w}>{w}</li>
+           ))}
+          </ul>
+         </TabsContent>
+        </Tabs>
+       </CardContent>
+      </motion.div>
+     )}
+    </AnimatePresence>
+   </Card>
+  </motion.div>
+ );
+};
+
 
  return(
   <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
@@ -102,25 +342,13 @@ const StrategyCard=({strategy}:{strategy:OptionsStrategy})=>{const isExpanded=ex
        {Object.entries(quickPresets).map(([k,v])=> (
         <Button key={k} onClick={()=>handlePreset(v as OptionsData)}>{k}</Button>
        ))}
+
       </div>
-     </CardContent>
-    </Card>
-   </TooltipProvider>
-   <Card className="mb-6">
-    <CardHeader>
-     <CardTitle className="flex items-center gap-2">
-      <Zap className="w-5 h-5"/>
-      Options Greeks
-     </CardTitle>
-    </CardHeader>
-    <CardContent>
-     <GreeksExplainer optionsData={optionsData}/>
-    </CardContent>
-   </Card>
-   <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-    {optionsStrategies.map(s=>(<StrategyCard key={s.id} strategy={s}/>))}
-   </div>
-   <p className="text-xs text-center text-muted-foreground mt-8">This tool is for educational purposes only and does not constitute financial advice.</p>
-  </div>
- );
+      <p className="text-xs text-center text-muted-foreground mt-8">
+        This tool is for educational purposes only and does not constitute
+        financial advice.
+      </p>
+    </div>
+  );
 };
+
