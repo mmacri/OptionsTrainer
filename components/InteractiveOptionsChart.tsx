@@ -7,7 +7,7 @@ import {
 } from './ui/card';
 import { Button } from './ui/button';
 import { TooltipProvider } from './ui/tooltip';
-import { Activity, Zap } from 'lucide-react';
+import { Activity, Zap, HelpCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ParameterSlider from './ParameterSlider';
 import { GreeksExplainer, OptionsData } from './GreeksExplainer';
@@ -23,9 +23,7 @@ import { validateParameters } from '../lib/optionsUtils';
 export { validateParameters } from '../lib/optionsUtils';
 
 export const InteractiveOptionsChart = () => {
-  const [expandedStrategy, setExpandedStrategy] = useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useState<'chart' | 'education'>('chart');
-  const [optionsData, setOptionsData] = useState<OptionsData>({
+  const defaultOptions: OptionsData = {
     strikePrice: 100,
     currentPrice: 100,
     premium: 5,
@@ -33,25 +31,39 @@ export const InteractiveOptionsChart = () => {
     impliedVolatility: 25,
     interestRate: 5,
     dividendYield: 2,
-  });
-  const [showWalkthrough, setShowWalkthrough] = useState(true);
+  };
+  const [expandedStrategy, setExpandedStrategy] = useState<string | null>(null);
+  const [optionsData, setOptionsData] = useState<OptionsData>(defaultOptions);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
-  const [showCelebration, setShowCelebration] = useState(false);
-  void selectedTab;
-  void setSelectedTab;
+  const [toast, setToast] = useState<string | null>(null);
+  const sliderAdjusted = React.useRef(false);
 
   const steps = [
-    { title: 'Welcome', content: 'This tour will guide you through the dashboard.' },
+    { title: 'Welcome!', content: 'Pick your experience level to tailor the tour.' },
     {
-      title: 'Parameters',
-      content: 'Use these sliders to set market conditions and option inputs.',
+      title: 'Market Parameters',
+      content: 'Set the market scene: price, strike, IV, and more. Try moving a slider.',
     },
     {
       title: 'Strategies',
-      content: 'Expand a strategy card to view its payoff chart or educational tips.',
+      content: 'Open a card to see payoff diagrams and guidance.',
     },
-    { title: 'Greeks', content: 'Learn how the Greeks measure option sensitivity.' },
+    {
+      title: 'Chart',
+      content: 'Hover the chart to read price vs. profit.',
+    },
+    {
+      title: 'Greeks',
+      content: 'Greeks explain sensitivity. Tap a Greek to see tips.',
+    },
   ];
+
+  useEffect(() => {
+    if (localStorage.getItem('otsd_tour_completed') !== 'true') {
+      setShowWalkthrough(true);
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -61,19 +73,39 @@ export const InteractiveOptionsChart = () => {
     }
   }, [optionsData]);
 
-  const triggerCelebration = () => {
-    setShowCelebration(true);
-    setTimeout(() => setShowCelebration(false), 1500);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 1500);
   };
 
-  const handlePreset = (preset: OptionsData) => {
+  const handleWalkthroughClose = () => {
+    localStorage.setItem('otsd_tour_completed', 'true');
+    setShowWalkthrough(false);
+  };
+
+  const handlePreset = (preset: OptionsData, label: string) => {
     setOptionsData(preset);
-    triggerCelebration();
+    showToast(`Preset applied: ${label}`);
+    console.log('preset_applied', { name: label });
   };
 
   const updateOption = (key: keyof OptionsData, value: number) => {
     setOptionsData((prev) => ({ ...prev, [key]: value }));
-    triggerCelebration();
+    if (!sliderAdjusted.current) {
+      showToast('Nice! You adjusted a slider.');
+      sliderAdjusted.current = true;
+    }
+    console.log('param_changed', { name: key, value });
+  };
+
+  const handleReset = () => {
+    setOptionsData(defaultOptions);
+    console.log('parameters_reset');
+  };
+
+  const handleReplayTour = () => {
+    setWalkthroughStep(0);
+    setShowWalkthrough(true);
   };
 
   const generatePayoffData = useMemo(() => {
@@ -107,7 +139,7 @@ export const InteractiveOptionsChart = () => {
               <div className="flex justify-end gap-2">
                 <Button
                   variant="ghost"
-                  onClick={() => setShowWalkthrough(false)}
+                  onClick={handleWalkthroughClose}
                   aria-label="Skip walkthrough"
                 >
                   Skip
@@ -115,7 +147,7 @@ export const InteractiveOptionsChart = () => {
                 <Button
                   onClick={() => {
                     if (walkthroughStep === steps.length - 1) {
-                      setShowWalkthrough(false);
+                      handleWalkthroughClose();
                     } else {
                       setWalkthroughStep((s) => s + 1);
                     }
@@ -133,18 +165,36 @@ export const InteractiveOptionsChart = () => {
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
-      <div className="text-center mb-8">
-        <h1 className="mb-2">Options Trading Strategies</h1>
-        <p className="text-muted-foreground">
-          Explore different options strategies and learn how their payoffs and Greeks work.
-        </p>
+    <div className="w-full max-w-7xl mx-auto p-6 space-y-6" role="main">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h1>Options Trading Strategies</h1>
+          <p className="text-muted-foreground">
+            Explore different options strategies and learn how their payoffs and Greeks work.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            onClick={handleReplayTour}
+            aria-label="Replay guided tour"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleReset}
+            aria-label="Reset parameters to defaults"
+          >
+            <AlertCircle className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <WalkthroughOverlay />
-      {showCelebration && (
+      {toast && (
         <div className="text-center text-sm text-green-600" role="status">
-          Nice! Changes applied.
+          {toast}
         </div>
       )}
 
@@ -216,15 +266,23 @@ export const InteractiveOptionsChart = () => {
               />
             </div>
             <div className="flex flex-wrap gap-2 mt-4">
-              {Object.entries(quickPresets).map(([key, preset]) => (
-                <Button
-                  key={key}
-                  size="sm"
-                  onClick={() => handlePreset(preset)}
-                >
-                  {key}
-                </Button>
-              ))}
+              {Object.entries(quickPresets).map(([key, preset]) => {
+                const labels: Record<string, string> = {
+                  ATMOption: 'ATM Option',
+                  OTMCall: 'OTM Call',
+                  OTMPut: 'OTM Put',
+                  HighVol: 'High Volatility',
+                };
+                return (
+                  <Button
+                    key={key}
+                    size="sm"
+                    onClick={() => handlePreset(preset, labels[key])}
+                  >
+                    {labels[key]}
+                  </Button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -250,7 +308,10 @@ export const InteractiveOptionsChart = () => {
             isExpanded={expandedStrategy === strategy.id}
             onToggle={(id) => {
               setExpandedStrategy(expandedStrategy === id ? null : id);
-              triggerCelebration();
+              console.log('strategy_toggled', {
+                id,
+                expanded: expandedStrategy !== id,
+              });
             }}
             optionsData={optionsData}
             generatePayoffData={generatePayoffData}
@@ -259,7 +320,7 @@ export const InteractiveOptionsChart = () => {
       </div>
 
       <p className="text-xs text-center text-muted-foreground">
-        For educational purposes only. This is not financial advice.
+        For educational purposes only. Not financial advice. Payoffs and Greeks are simplified approximations.
       </p>
     </div>
   );
