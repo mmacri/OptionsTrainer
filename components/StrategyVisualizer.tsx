@@ -48,6 +48,10 @@ export const StrategyVisualizer: React.FC<StrategyVisualizerProps> = ({
     const sign = leg.action === 'Buy' ? -1 : 1;
     return sum + (leg.premium ?? 0) * sign;
   }, 0);
+  const formattedNet =
+    netPremium > 0
+      ? `+$${netPremium.toFixed(2)} (credit)`
+      : `-$${Math.abs(netPremium).toFixed(2)} (debit)`;
 
   return (
     <div className="space-y-2">
@@ -66,7 +70,7 @@ export const StrategyVisualizer: React.FC<StrategyVisualizerProps> = ({
           )}
         </div>
       ))}
-      <div className="text-sm">Net Premium: {netPremium.toFixed(2)}</div>
+      <div className="text-sm">Net Premium: {formattedNet}</div>
     </div>
   );
 };

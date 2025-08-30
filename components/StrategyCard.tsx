@@ -50,6 +50,9 @@ export const StrategyCard = ({
   const maxPayoff = Math.max(...payoffData.map((p) => p.profitLoss));
   const minPayoff = Math.min(...payoffData.map((p) => p.profitLoss));
   const [selectedTab, setSelectedTab] = useState<'chart' | 'education'>('chart');
+  const currentPL = strategy
+    .calculatePayoff(optionsData.currentPrice, optionsData)
+    .toFixed(2);
 
   return (
     <motion.div
@@ -59,30 +62,42 @@ export const StrategyCard = ({
       transition={{ duration: 0.3 }}
     >
       <Card>
-        <CardHeader
-          onClick={() => onToggle(strategy.id)}
-          className="cursor-pointer"
-        >
-          <CardTitle className="flex items-center gap-2">
-            {strategy.title}
-            <ChevronRight
-              className={`w-4 h-4 transition-transform ${
-                isExpanded ? 'rotate-90' : ''
-              }`}
-            />
-          </CardTitle>
-          <CardDescription>{strategy.description}</CardDescription>
-          <div className="flex gap-1 mt-2">
-            <Badge className={getCategoryColor(strategy.category)}>
-              {strategy.category}
-            </Badge>
-            <Badge className={getComplexityColor(strategy.complexity)}>
-              {strategy.complexity}
-            </Badge>
-            <Badge className={getRiskColor(strategy.riskLevel)}>
-              {strategy.riskLevel}
-            </Badge>
-          </div>
+        <CardHeader className="p-4">
+          <button
+            onClick={() => onToggle(strategy.id)}
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${
+              strategy.title
+            } details`}
+            aria-expanded={isExpanded}
+            className="w-full text-left"
+          >
+            <CardTitle className="flex items-center gap-2">
+              {strategy.title}
+              <ChevronRight
+                className={`w-4 h-4 transition-transform ${
+                  isExpanded ? 'rotate-90' : ''
+                }`}
+              />
+            </CardTitle>
+            <CardDescription>{strategy.description}</CardDescription>
+            <div className="flex gap-1 mt-2">
+              <Badge className={getCategoryColor(strategy.category)}>
+                {strategy.category}
+              </Badge>
+              <Badge className={getComplexityColor(strategy.complexity)}>
+                {strategy.complexity}
+              </Badge>
+              <Badge className={getRiskColor(strategy.riskLevel)}>
+                {strategy.riskLevel}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-1 mt-2 text-xs">
+              <span>Breakeven: {strategy.breakeven}</span>
+              <span>Max Profit: {strategy.maxProfit}</span>
+              <span>Max Loss: {strategy.maxLoss}</span>
+              <span>Current P&amp;L: ${currentPL}</span>
+            </div>
+          </button>
         </CardHeader>
         <AnimatePresence>
           {isExpanded && (
