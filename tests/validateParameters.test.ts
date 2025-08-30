@@ -17,6 +17,7 @@ describe('validateParameters', () => {
     expect(() => validateParameters({ ...base, strikePrice: -1 })).toThrow();
   });
 
+
   it('throws for non-positive current price', () => {
     expect(() => validateParameters({ ...base, currentPrice: 0 })).toThrow();
   });
