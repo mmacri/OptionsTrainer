@@ -1,4 +1,8 @@
+
 import React, { useMemo, useState } from "react";
+
+import React, { Suspense, useMemo, useState } from "react";
+
 import {
   Card,
   CardContent,
@@ -8,6 +12,7 @@ import {
 } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+
 import { Slider } from "./ui/slider";
 import {
   Tooltip,
@@ -15,6 +20,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
+
+import { TooltipProvider } from "./ui/tooltip";
+import ParameterSlider from "./ParameterSlider";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { ChevronRight, Activity, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -29,13 +38,30 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from "recharts";
+
 import { GreeksExplainer, OptionsData } from "./GreeksExplainer";
 import { StrategyVisualizer, StrategyLeg } from "./StrategyVisualizer";
+
+import { StrategyVisualizer, StrategyLeg } from "./StrategyVisualizer";
+import type { OptionsData } from "./GreeksExplainer";
+import { optionsStrategies, OptionsStrategy } from "./strategies";
+import {
+  quickPresets,
+  getCategoryColor,
+  getComplexityColor,
+  getRiskColor,
+  walkthroughSteps,
+} from "./config";
+const GreeksExplainer = React.lazy(() =>
+  import("./GreeksExplainer").then((m) => ({ default: m.GreeksExplainer })),
+);
+
 
 interface PayoffPoint {
   stockPrice: number;
   profitLoss: number;
 }
+
 interface OptionsStrategy {
   id: string;
   title: string;
@@ -171,10 +197,37 @@ const quickPresets = {
     strikePrice: 95,
     currentPrice: 100,
     premium: 2,
+
+// OptionsStrategy data lives in ./strategies
+
+const safePayoffCalculation = (
+  s: number,
+  strategy: OptionsStrategy,
+  o: OptionsData,
+) => {
+  try {
+    return strategy.calculatePayoff(s, o);
+  } catch (e) {
+    console.warn("Payoff calculation error:", e);
+    return 0;
+  }
+};
+
+export const InteractiveOptionsChart = () => {
+  const [expandedStrategy, setExpandedStrategy] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState<"chart" | "education">(
+    "chart",
+  );
+  const [optionsData, setOptionsData] = useState<OptionsData>({
+    strikePrice: 100,
+    currentPrice: 100,
+    premium: 5,
+
     daysToExpiry: 30,
     impliedVolatility: 25,
     interestRate: 5,
     dividendYield: 2,
+
   },
   HighVol: {
     strikePrice: 100,
@@ -352,6 +405,38 @@ export const InteractiveOptionsChart = () => {
     );
   };
 
+=======
+  });
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [walkthroughStep, setWalkthroughStep] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const handlePreset = (p: OptionsData) => setOptionsData(p);
+  const generatePayoffData = useMemo(() => {
+    return (strategy: OptionsStrategy): PayoffPoint[] => {
+      const data: PayoffPoint[] = [];
+      const minPrice = Math.max(0, optionsData.strikePrice - 30);
+      const maxPrice = optionsData.strikePrice + 30;
+      for (let price = minPrice; price <= maxPrice; price += 2) {
+        data.push({
+          stockPrice: price,
+          profitLoss: safePayoffCalculation(price, strategy, optionsData),
+        });
+      }
+      return data;
+    };
+  }, [optionsData]);
+
+  const sliders = [
+    { label: "currentPrice", min: 50, max: 200, step: 1 },
+    { label: "strikePrice", min: 50, max: 200, step: 5 },
+    { label: "premium", min: 0.5, max: 30, step: 0.25 },
+    { label: "daysToExpiry", min: 1, max: 365, step: 1 },
+    { label: "impliedVolatility", min: 5, max: 100, step: 1 },
+    { label: "interestRate", min: 0, max: 10, step: 0.1 },
+    { label: "dividendYield", min: 0, max: 5, step: 0.1 },
+  ] as const;
+
+
   const StrategyCard = ({ strategy }: { strategy: OptionsStrategy }) => {
     const isExpanded = expandedStrategy === strategy.id;
     const payoffData = generatePayoffData(strategy);
@@ -372,6 +457,8 @@ export const InteractiveOptionsChart = () => {
               {strategy.title}
               <ChevronRight
                 className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+
+                aria-hidden="true"
               />
             </CardTitle>
             <CardDescription>{strategy.description}</CardDescription>
@@ -527,10 +614,19 @@ export const InteractiveOptionsChart = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <Card className="max-w-sm">
             <CardHeader>
+
               <CardTitle>{steps[walkthroughStep].title}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="mb-4 text-sm">{steps[walkthroughStep].content}</p>
+
+              <CardTitle>{walkthroughSteps[walkthroughStep].title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4 text-sm">
+                {walkthroughSteps[walkthroughStep].content}
+              </p>
+
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
@@ -538,7 +634,11 @@ export const InteractiveOptionsChart = () => {
                 >
                   Skip
                 </Button>
+
                 {walkthroughStep < steps.length - 1 ? (
+
+                {walkthroughStep < walkthroughSteps.length - 1 ? (
+
                   <Button onClick={() => setWalkthroughStep((s) => s + 1)}>
                     Next
                   </Button>
@@ -579,11 +679,16 @@ export const InteractiveOptionsChart = () => {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+
               <Activity className="w-5 h-5" />
+
+              <Activity className="w-5 h-5" aria-hidden="true" />
+
               Market Parameters & Option Pricing Inputs
             </CardTitle>
           </CardHeader>
           <CardContent>
+
             {ParameterSlider("currentPrice", 50, 200, 1)}
             {ParameterSlider("strikePrice", 50, 200, 5)}
             {ParameterSlider("premium", 0.5, 30, 0.25)}
@@ -591,6 +696,24 @@ export const InteractiveOptionsChart = () => {
             {ParameterSlider("impliedVolatility", 5, 100, 1)}
             {ParameterSlider("interestRate", 0, 10, 0.1)}
             {ParameterSlider("dividendYield", 0, 5, 0.1)}
+
+            {sliders.map((s) => (
+              <ParameterSlider
+                key={s.label}
+                label={s.label}
+                min={s.min}
+                max={s.max}
+                step={s.step}
+                value={optionsData[s.label]}
+                onChange={(v) =>
+                  setOptionsData((prev: OptionsData) => ({
+                    ...prev,
+                    [s.label]: v,
+                  }))
+                }
+              />
+            ))}
+
             <div className="flex gap-2 mt-4">
               {Object.entries(quickPresets).map(([k, v]) => (
                 <Button key={k} onClick={() => handlePreset(v as OptionsData)}>
@@ -604,12 +727,22 @@ export const InteractiveOptionsChart = () => {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
+
             <Zap className="w-5 h-5" />
+
+            <Zap className="w-5 h-5" aria-hidden="true" />
+            
             Options Greeks
           </CardTitle>
         </CardHeader>
         <CardContent>
+
           <GreeksExplainer optionsData={optionsData} />
+
+          <Suspense fallback={<div>Loading Greeks...</div>}>
+            <GreeksExplainer optionsData={optionsData} />
+          </Suspense>
+
         </CardContent>
       </Card>
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
