@@ -37,6 +37,33 @@ export const quickPresets: Record<string, OptionsData> = {
     interestRate: 5,
     dividendYield: 1,
   },
+  EarningsWeek: {
+    strikePrice: 100,
+    currentPrice: 100,
+    premium: 10,
+    daysToExpiry: 5,
+    impliedVolatility: 70,
+    interestRate: 5,
+    dividendYield: 1,
+  },
+  CalmMarket: {
+    strikePrice: 100,
+    currentPrice: 100,
+    premium: 2,
+    daysToExpiry: 45,
+    impliedVolatility: 12,
+    interestRate: 5,
+    dividendYield: 2,
+  },
+  CrashScenario: {
+    strikePrice: 95,
+    currentPrice: 75,
+    premium: 6,
+    daysToExpiry: 14,
+    impliedVolatility: 80,
+    interestRate: 4,
+    dividendYield: 0,
+  },
 };
 
 type TooltipInfo = { title: string; content: string };
@@ -77,4 +104,3 @@ export const parameterTooltips: Record<keyof OptionsData, TooltipInfo> = {
       'Expected annual dividend yield of the underlying stock. Dividends decrease call values and increase put values.',
   },
 };
-
