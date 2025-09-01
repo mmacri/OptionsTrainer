@@ -8,7 +8,7 @@ import {
 } from './ui/card';
 import { Button } from './ui/button';
 import { TooltipProvider } from './ui/tooltip';
-import { Activity, Target, TrendingUp, TrendingDown, Zap } from 'lucide-react';
+import { Activity, Target, TrendingUp, TrendingDown, Zap, Calendar, Wind, AlertTriangle } from 'lucide-react';
 import { ParameterSlider } from './ParameterSlider';
 import type { OptionsData } from './GreeksExplainer';
 import { quickPresets } from '../lib/presets';
@@ -28,7 +28,10 @@ export const OptionsParameters: React.FC<OptionsParametersProps> = ({
     { name: 'ATM Option', icon: Target, values: quickPresets.ATMOption },
     { name: 'OTM Call', icon: TrendingUp, values: quickPresets.OTMCall },
     { name: 'OTM Put', icon: TrendingDown, values: quickPresets.OTMPut },
-    { name: 'High Vol', icon: Zap, values: quickPresets.HighVol },
+    { name: 'High Volatility', icon: Zap, values: quickPresets.HighVol },
+    { name: 'Earnings Week', icon: Calendar, values: quickPresets.EarningsWeek },
+    { name: 'Calm Market', icon: Wind, values: quickPresets.CalmMarket },
+    { name: 'Crash Scenario', icon: AlertTriangle, values: quickPresets.CrashScenario },
   ];
 
   return (
@@ -106,7 +109,7 @@ export const OptionsParameters: React.FC<OptionsParametersProps> = ({
           </div>
           <div className="mt-6 pt-6 border-t">
             <h4 className="mb-3 font-medium">Quick Presets</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
               {presets.map((p) => (
                 <Button
                   key={p.name}
